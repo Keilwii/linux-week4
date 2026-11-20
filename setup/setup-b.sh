@@ -91,7 +91,7 @@ install -d -m 755 -o root -g root /srv/backups
 install -d -m 750 -o backup -g week4 "$BACKUP_DIR"
 install -d -m 700 -o backup -g backup /home/backup/.ssh
 RRSYNC=$(command -v rrsync)
-printf 'restrict,command="%s -wo %s" %s\n' "$RRSYNC" "$BACKUP_DIR" "$(cat "$BACKUP_PUB")" \
+printf 'restrict,command="%s -wo -no-del -no-overwrite %s" %s\n' "$RRSYNC" "$BACKUP_DIR" "$(cat "$BACKUP_PUB")" \
     > /home/backup/.ssh/authorized_keys
 chown backup:backup /home/backup/.ssh/authorized_keys
 chmod 600 /home/backup/.ssh/authorized_keys
