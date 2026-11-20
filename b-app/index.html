@@ -199,13 +199,49 @@
 </section>
 
 <section>
-  <h2>Test results</h2>
-  <p>Tests are in progress, results come here.</p>
+  <h2>Test results (20 Nov 2026, times in UTC)</h2>
+  <div class="table-container">
+  <table>
+    <tr><th>Test</th><th>Result</th></tr>
+    <tr><td>Both pages publicly accessible</td>
+        <td class="ok">OK: A's <code>/viikko2/</code> and B's <code>/viikko4/</code> both load from outside (tested from my laptop). A's week 3 report still works too.</td></tr>
+    <tr><td>Loading A's page updates B</td>
+        <td class="ok">OK: B showed 50, I loaded A's page twice (51, 52), and B showed 52 straight away on reload.</td></tr>
+    <tr><td>Loading B's page doesn't increment</td>
+        <td class="ok">OK: reloaded B three times in a row, it stayed at 50. B's db user only has SELECT and B is read_only.</td></tr>
+    <tr><td>Replication reports normal operation</td>
+        <td class="ok">OK: <code>SHOW SLAVE STATUS</code> on B: IO and SQL threads <code>Yes</code>, 0 seconds behind,
+        no errors, connection to A over SSL (live values at the top of this page).</td></tr>
+    <tr><td>Port 3306 on A closed to others</td>
+        <td class="ok">OK: from my laptop <code>nc -z 46.62.229.94 3306</code> fails, only B's IP is allowed by ufw.</td></tr>
+    <tr><td>Backup key can't do anything else</td>
+        <td class="ok">OK: with A's backup key, opening a shell on B, downloading a backup, deleting with
+        <code>rsync --delete</code> and overwriting an existing backup were all refused.</td></tr>
+    <tr><td>Two scheduled backups succeed</td>
+        <td>Waiting for the 13:05 and 14:05 runs, result comes here.</td></tr>
+    <tr><td>Restored file matches the original</td>
+        <td class="ok">OK: restored <code>var/www/html/backup-test.txt</code> from <code>www-2026-11-20_121049.tar.gz</code> to
+        <code>/home/backup/restore-test/2026-11-20_121417/</code> on B. SHA-256 on both servers:
+        <code>0b295a06024ed4f61921409595a985b60f8c349c21380db2f47716d39d4544e8</code>, so they match.</td></tr>
+    <tr><td>B keeps working after a reboot</td>
+        <td class="ok">OK: rebooted B at 12:14 with <code>sudo reboot</code>. After it came back (12:14:26), mariadb, nginx,
+        viikko4, crond and sshd were active without me starting anything. B's page loaded, replication was running
+        (IO/SQL Yes, 0 s behind), and loading A's page (53) showed up on B right away.</td></tr>
+  </table>
+  </div>
 </section>
 
 <section>
   <h2>Problem I solved</h2>
-  <p>Coming once the setup is done.</p>
+  <p>The first backup upload failed with <code>Permission denied (publickey)</code>, even though the key was in
+  <code>/home/backup/.ssh/authorized_keys</code> with the right permissions. B's SSH log said
+  <i>"User backup from 46.62.229.94 not allowed because not listed in AllowUsers"</i>: B's sshd config has
+  <code>AllowUsers kalle</code>, so no other user can log in at all. I added a drop-in file
+  <code>/etc/ssh/sshd_config.d/50-week4-backup.conf</code> with <code>AllowUsers backup@46.62.229.94</code>.
+  AllowUsers lines add up, so kalle still works and the backup user is only allowed from A's IP.</p>
+  <p>Something I learned while testing: <code>rrsync -wo</code> (write-only) stops A from reading backups, but it
+  still let my test delete one with <code>rsync --delete</code>. So I added <code>-no-del -no-overwrite</code> to the key.
+  Now A can only add new backups, and even if A got hacked, it couldn't destroy the old ones on B.</p>
 </section>
 
 </body>
