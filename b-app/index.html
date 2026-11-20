@@ -218,7 +218,13 @@
         <td class="ok">OK: with A's backup key, opening a shell on B, downloading a backup, deleting with
         <code>rsync --delete</code> and overwriting an existing backup were all refused.</td></tr>
     <tr><td>Two scheduled backups succeed</td>
-        <td>Waiting for the 13:05 and 14:05 runs, result comes here.</td></tr>
+        <td class="ok">OK: cron on A ran the backup by itself at 13:05, 14:05 and 15:05, all after B's reboot.
+        From <code>/home/kalle/backup.log</code> on A:
+<pre>2026-11-20 13:05:02 UTC OK   www-2026-11-20_130501.tar.gz 8.0K
+2026-11-20 14:05:02 UTC OK   www-2026-11-20_140501.tar.gz 8.0K
+2026-11-20 15:05:01 UTC OK   www-2026-11-20_150501.tar.gz 8.0K</pre>
+        All three are in <code>/srv/backups/server-a/</code> on B with my earlier manual one, so there are 4 timestamped versions
+        (list at the top of this page). Earlier in the log there's also a <code>FAIL</code> line from my first try, before I fixed AllowUsers, so the log really records failures too.</td></tr>
     <tr><td>Restored file matches the original</td>
         <td class="ok">OK: restored <code>var/www/html/backup-test.txt</code> from <code>www-2026-11-20_121049.tar.gz</code> to
         <code>/home/backup/restore-test/2026-11-20_121417/</code> on B. SHA-256 on both servers:
@@ -226,7 +232,8 @@
     <tr><td>B keeps working after a reboot</td>
         <td class="ok">OK: rebooted B at 12:14 with <code>sudo reboot</code>. After it came back (12:14:26), mariadb, nginx,
         viikko4, crond and sshd were active without me starting anything. B's page loaded, replication was running
-        (IO/SQL Yes, 0 s behind), and loading A's page (53) showed up on B right away.</td></tr>
+        (IO/SQL Yes, 0 s behind), and loading A's page (53) showed up on B right away. The scheduled backups at 13:05, 14:05 and 15:05 all ran after this reboot and
+        landed on B, so the backup schedule into B kept working too.</td></tr>
   </table>
   </div>
 </section>
