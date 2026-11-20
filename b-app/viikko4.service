@@ -1,0 +1,22 @@
+[Unit]
+Description=Week 4 read-only replica page
+After=network.target mariadb.service
+Wants=mariadb.service
+
+[Service]
+User=week4
+Group=week4
+WorkingDirectory=/opt/week4-app
+Environment=HOST=127.0.0.1
+Environment=PORT=8004
+ExecStart=/usr/bin/python3 /opt/week4-app/app.py
+Restart=always
+RestartSec=2
+# the app only reads, so lock it down
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Week 4 – read-only replica (server B)</title>
+<style>
+  body {
+    max-width: 860px;
+    margin: 32px auto;
+    padding: 0 16px;
+    font-family: system-ui, sans-serif;
+    line-height: 1.6;
+    background: #f3f1ec;
+    color: #24211c;
+  }
+  h1 { margin-bottom: 4px; font-family: "Courier New", monospace; }
+  h2 { margin-top: 0; color: #5a3d1b; }
+  h3 { margin-bottom: 4px; }
+  .banner {
+    background: #5a3d1b;
+    color: #fff;
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-weight: bold;
+    letter-spacing: .04em;
+  }
+  .sub { color: #6d655a; margin-top: 0; }
+  section {
+    background: #fff;
+    border-radius: 10px;
+    padding: 18px 22px;
+    margin: 18px 0;
+    border-left: 5px solid #c08a4a;
+  }
+  .count {
+    font-family: "Courier New", monospace;
+    font-size: 56px;
+    font-weight: bold;
+    line-height: 1.1;
+  }
+  .table-container { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { border: 1px solid #e0d9cc; padding: 7px 10px; text-align: left; vertical-align: top; }
+  th { background: #f4ece0; font-weight: 600; }
+  code { background: #efe9df; padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+  pre { background: #efe9df; padding: 10px; overflow-x: auto; }
+  .ok { color: #1f6b2a; font-weight: bold; }
+  .bad { color: #a12a1a; font-weight: bold; }
+  .note { color: #6d655a; font-size: 14px; }
+  a { color: #8a4b0f; }
+</style>
+</head>
+<body>
+
+<p class="banner">SERVER B &middot; READ-ONLY REPLICA &middot; loading this page never changes the counter</p>
+<h1>Week 4: backups and replication</h1>
+<p class="sub">Server B (95.216.189.103) &middot; page generated $generated</p>
+
+<section>
+  <h2>Replicated visitor counter</h2>
+  $db_error
+  <div class="count">$count</div>
+  <p>This is read from <b>B's own MariaDB</b>, which gets every change from server A automatically.
+  The count goes up only when someone loads A's page:
+  <a href="http://46.62.229.94/viikko2/">http://46.62.229.94/viikko2/</a>. Reload this page after that and the new value shows up here.</p>
+  <div class="table-container">
+  <table>
+    <tr><th>Last change on A</th><td>$updated_at</td></tr>
+    <tr><th>Replication IO thread (fetching from A)</th><td>$io_running</td></tr>
+    <tr><th>Replication SQL thread (applying changes)</th><td>$sql_running</td></tr>
+    <tr><th>Seconds behind A</th><td>$behind</td></tr>
+    <tr><th>Last replication error</th><td>$last_error</td></tr>
+    <tr><th>GTID position</th><td><code>$gtid</code></td></tr>
+    <tr><th>B's read_only setting</th><td>$read_only</td></tr>
+    <tr><th>MariaDB on B</th><td>$version</td></tr>
+  </table>
+  </div>
+  <p class="note">Values come from <code>SHOW SLAVE STATUS</code> on B every time the page loads.</p>
+</section>
+
+<section>
+  <h2>Latest website backups from A</h2>
+  <p>$backup_count backups stored on B in <code>/srv/backups/server-a/</code>. Newest first:</p>
+  <div class="table-container">
+  <table>
+    <tr><th>File</th><th>Size</th></tr>
+    $backup_rows
+  </table>
+  </div>
+  <p class="note">Only the names and sizes are shown, the archives themselves aren't served anywhere.</p>
+</section>
+
+<section>
+  <h2>Links</h2>
+  <ul>
+    <li>Server A, week 2 counter (increments): <a href="http://46.62.229.94/viikko2/">http://46.62.229.94/viikko2/</a></li>
+    <li>Server B, this page (read-only): <a href="http://95.216.189.103/viikko4/">http://95.216.189.103/viikko4/</a></li>
+    <li>Code: <a href="https://github.com/Keilwii/linux-week4">github.com/Keilwii/linux-week4</a></li>
+  </ul>
+</section>
+
+<section>
+  <h2>How I created server B</h2>
+  <p>My servers are on Hetzner, not cPouta, so I couldn't make B from a cPouta snapshot of A. B is a
+  separate Hetzner server with its own IP (95.216.189.103). It's not an exact copy either: A runs Ubuntu 26.04
+  and B runs Rocky Linux 10 (ARM). So I moved over what B needs by hand instead of cloning the disk:</p>
+  <ul>
+    <li><b>Files and settings:</b> the repo is cloned on both servers. The setup script for B
+    (<code>setup/setup-b.sh</code>) installs nginx, MariaDB, Python and PyMySQL and copies B's configs into place.</li>
+    <li><b>Database:</b> not copied as a dump. A had binary logging on before I created the
+    <code>week2</code> database, so B started replication from the very beginning of A's binlog and built
+    the same database and data from it.</li>
+    <li><b>MariaDB version:</b> Rocky's own MariaDB is 10.11, but A has 11.8, and a replica shouldn't be older
+    than its primary. So B gets MariaDB 11.8 from MariaDB's official repository.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Storage layout and backup locations</h2>
+  <div class="table-container">
+  <table>
+    <tr><th></th><th>Server A (46.62.229.94)</th><th>Server B (95.216.189.103)</th></tr>
+    <tr><th>OS</th><td>Ubuntu 26.04, x86_64</td><td>Rocky Linux 10.3, aarch64</td></tr>
+    <tr><th>Disk</th><td>76 GB, one ext4 root partition <code>/dev/sda1</code> on <code>/</code></td>
+        <td>38 GB, one root partition <code>/dev/sda1</code> on <code>/</code></td></tr>
+    <tr><th>Website</th><td><code>/var/www/week-1</code> (served, incl. <code>viikko3/</code>),
+        <code>/var/www/html</code> (default nginx folder)</td><td>nginx default page; <code>/viikko4/</code> is the app in <code>/opt/week4-app</code></td></tr>
+    <tr><th>Database files</th><td><code>/var/lib/mysql</code> (+ binlogs <code>mariadb-bin.*</code>)</td>
+        <td><code>/var/lib/mysql</code> (+ relay logs <code>relay-bin.*</code>)</td></tr>
+    <tr><th>Backups</th><td>none kept, archive is made in a temp folder and removed after upload.
+        Log in <code>/home/kalle/backup.log</code></td>
+        <td><code>/srv/backups/server-a/www-YYYY-MM-DD_HHMMSS.tar.gz</code>, newest 48 kept</td></tr>
+  </table>
+  </div>
+  <p><code>/srv</code> isn't under any nginx root, so the backups aren't public.</p>
+</section>
+
+<section>
+  <h2>Users, database users and permissions</h2>
+  <h3>Linux users</h3>
+  <ul>
+    <li><b>kalle</b> (A and B): my admin user. On A it runs the week 2 app, the week 3 report and the backup cron job.</li>
+    <li><b>backup</b> (B only): receives backups. Password locked, SSH key login only. Its key in
+    <code>authorized_keys</code> is forced to <code>rrsync -wo /srv/backups/server-a</code> with
+    <code>restrict</code>, so A's key can only upload files into that one folder. It can't get a shell,
+    read old backups or delete anything, even if A is hacked.</li>
+    <li><b>week4</b> (B only): system user with no login shell that runs B's page app. The systemd service also uses
+    <code>ProtectSystem=strict</code> and <code>ProtectHome=true</code>, so the app can't write to the system.</li>
+  </ul>
+  <h3>Database users</h3>
+  <ul>
+    <li><b>week2app@localhost</b> (A): only <code>SELECT, UPDATE</code> on <code>week2.counter</code>. Used by the week 2 app.</li>
+    <li><b>repl@95.216.189.103</b> (A): only <code>REPLICATION SLAVE</code>, can log in only from B's IP, and only over SSL.</li>
+    <li><b>week4ro@localhost</b> (B): only <code>SELECT</code> on <code>week2</code> plus <code>SLAVE MONITOR</code> to show the status above.
+    On top of that, B runs with <code>read_only=ON</code>, so ordinary users can't write even if they had the grant.</li>
+    <li><b>root</b> (both): only through <code>sudo mariadb</code> (unix socket), no password login.</li>
+  </ul>
+  <h3>Ownership and permissions</h3>
+  <div class="table-container">
+  <table>
+    <tr><th>Path</th><th>Owner</th><th>Mode</th><th>Why</th></tr>
+    <tr><td><code>/etc/week2/db.cnf</code> (A)</td><td>root:kalle</td><td>640</td><td>week 2 app's db password, readable only by the app's user</td></tr>
+    <tr><td><code>/etc/week4/db.cnf</code> (B)</td><td>root:week4</td><td>640</td><td>same for the replica page</td></tr>
+    <tr><td><code>/srv/backups/server-a</code> (B)</td><td>backup:week4</td><td>750</td><td>backup user writes; the page can list file names but nobody else can get in</td></tr>
+    <tr><td>backup archives (B)</td><td>backup</td><td>600</td><td>only the backup user (and root) can read them</td></tr>
+    <tr><td><code>/home/backup/.ssh/authorized_keys</code> (B)</td><td>backup</td><td>600</td><td>sshd refuses keys with looser permissions</td></tr>
+    <tr><td><code>/home/kalle/.ssh/backup_to_b</code> (A)</td><td>kalle</td><td>600</td><td>private key used by the backup job</td></tr>
+    <tr><td><code>/opt/week4-app</code> (B)</td><td>kalle:week4</td><td>750 / 640</td><td>the app can read its code but not change it</td></tr>
+  </table>
+  </div>
+  <p>Passwords are generated on the servers by the setup scripts. They're only in these files, not on this page or in GitHub.</p>
+</section>
+
+<section>
+  <h2>Hourly backups</h2>
+  <p>kalle's crontab on A has <code>5 * * * * /home/kalle/linux-week4/backup/backup.sh</code>, so it runs at 5 past every hour.
+  The script:</p>
+  <ol>
+    <li>packs <code>/var/www/html</code> and <code>/var/www/week-1</code> into <code>www-&lt;UTC time&gt;.tar.gz</code> in a temp folder.
+    (The assignment asks for <code>/var/www/html</code>, but my actual pages are in <code>/var/www/week-1</code>, so I back up both.)</li>
+    <li>uploads it to <code>backup@B</code> with rsync over SSH, using the restricted key.</li>
+    <li>writes <code>OK</code> or <code>FAIL</code> with the reason to <code>/home/kalle/backup.log</code>, and deletes the temp file.</li>
+  </ol>
+  <p>On B, the backup user's own cron job (<code>30 * * * *</code>) deletes everything except the newest 48 archives, so there are always about 2 days of hourly versions.</p>
+</section>
+
+<section>
+  <h2>Continuous replication</h2>
+  <p>A is the primary. Every change to the <code>week2</code> database is written to A's binary log (row format).
+  B connects to A as <code>repl</code> over SSL on port 3306. Its IO thread copies new binlog events into B's relay log as soon as they happen,
+  and its SQL thread applies them to B's own copy of the database. It uses GTIDs, so after a restart B continues from where it stopped.
+  On A, ufw only lets B's IP connect to port 3306. On B, MariaDB only listens on localhost.</p>
+  <p><b>Why replication doesn't replace backups:</b> replication copies every change right away, including mistakes.
+  If someone runs <code>DELETE FROM counter</code> or the data gets corrupted on A, B gets the same damage within a second.
+  Replication only gives you a second live copy of <i>now</i>. To go back to how things were yesterday you need
+  historical backups (timestamped copies) that later changes can't touch.</p>
+</section>
+
+<section>
+  <h2>Test results</h2>
+  <p>Tests are in progress, results come here.</p>
+</section>
+
+<section>
+  <h2>Problem I solved</h2>
+  <p>Coming once the setup is done.</p>
+</section>
+
+</body>
+</html>
