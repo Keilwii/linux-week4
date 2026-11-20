@@ -1,0 +1,10 @@
+# server B (replica): /etc/my.cnf.d/60-replica.cnf
+[mysqld]
+server_id               = 2
+# normal users can't write, only the replication thread (and root) can
+read_only               = ON
+relay_log               = relay-bin
+# only apply changes to the week 2 app database
+replicate_wild_do_table = week2.%
+# nothing outside B needs this database
+bind_address            = 127.0.0.1

@@ -1,0 +1,10 @@
+-- run on B as root, password comes from A (never committed)
+SET GLOBAL gtid_slave_pos = '';
+CHANGE MASTER TO
+    MASTER_HOST = '46.62.229.94',
+    MASTER_PORT = 3306,
+    MASTER_USER = 'repl',
+    MASTER_PASSWORD = '<from A>',
+    MASTER_USE_GTID = slave_pos,
+    MASTER_SSL = 1;
+START SLAVE;

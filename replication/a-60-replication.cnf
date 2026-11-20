@@ -1,0 +1,9 @@
+# server A (primary): /etc/mysql/mariadb.conf.d/60-replication.cnf
+[mysqld]
+server_id                  = 1
+log_bin                    = mariadb-bin
+binlog_format              = ROW
+# keep binlogs for 14 days so B can catch up after a longer break
+binlog_expire_logs_seconds = 1209600
+# listen on the public IP too, ufw only lets B's IP to port 3306
+bind_address               = 0.0.0.0

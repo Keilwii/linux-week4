@@ -1,0 +1,5 @@
+*.pass
+*.env
+*.tar.gz
+*.sql
+__pycache__/
