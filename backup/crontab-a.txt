@@ -1,0 +1,5 @@
+# kalle's crontab on server A, install with: crontab ~/linux-week4/backup/crontab-a.txt
+# week 3: status report every minute
+* * * * * /home/kalle/linux-week3/report.sh >/dev/null 2>>/home/kalle/status-cron.log
+# week 4: website backup to server B at 5 past every hour (result goes to ~/backup.log)
+5 * * * * /home/kalle/linux-week4/backup/backup.sh

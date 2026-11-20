@@ -1,0 +1,2 @@
+# backup user's crontab on server B: remove old archives at half past every hour
+30 * * * * /usr/local/bin/prune-backups.sh
