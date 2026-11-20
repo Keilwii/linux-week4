@@ -71,6 +71,7 @@ def render():
         "sql_running": yes_no(None),
         "behind": "-",
         "gtid": "-",
+        "ssl": yes_no(None),
         "last_error": "none",
         "read_only": "?",
         "version": "?",
@@ -86,6 +87,7 @@ def render():
         behind = repl.get("Seconds_Behind_Master")
         values["behind"] = "-" if behind is None else f"{behind} s"
         values["gtid"] = html.escape(str(repl.get("Gtid_IO_Pos") or "-"))
+        values["ssl"] = yes_no(repl.get("Master_SSL_Allowed"))
         err = repl.get("Last_IO_Error") or repl.get("Last_SQL_Error")
         values["last_error"] = html.escape(err) if err else "none"
         values["read_only"] = "ON" if server["read_only"] else "OFF"
